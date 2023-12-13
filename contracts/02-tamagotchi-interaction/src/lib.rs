@@ -1,9 +1,12 @@
 #![no_std]
 
 #[allow(unused_imports)]
-use gstd::{exec, prelude::*};
+use gstd::{exec, msg, prelude::*, ActorId};
 use tamagotchi_interaction_io::*;
 
+#[derive(Default, Encode, Decode, TypeInfo)]
+#[codec(crate = gstd::codec)]
+#[scale_info(crate = gstd::scale_info)]
 pub struct Tamagotchi {
     pub name: String,
     pub date_of_birth: u64,
@@ -17,19 +20,21 @@ pub struct Tamagotchi {
 }
 
 impl Tamagotchi {
-    fn current_fed(&self) -> u64 {}
-    fn current_entertained(&self) -> u64 {}
-    fn current_slept(&self) -> u64 {}
-}
-
-fn current_fed(&self) -> u64 {
-    self.fed - HUNGER_PER_BLOCK * (exec::block_height() as u64 - self.fed_block)
-}
-fn current_entertained(&self) -> u64 {
-    self.entertained - BOREDOM_PER_BLOCK * (exec::block_height() as u64 - self.entertained_block)
-}
-fn current_slept(&self) -> u64 {
-    self.slept - ENERGY_PER_BLOCK * (exec::block_height() as u64 - self.slept_block)
+    fn current_fed(&mut self) -> u64 {
+        let a: u64 =
+            self.fed - (HUNGER_PER_BLOCK as u64) * ((exec::block_height() as u64) - self.fed_block);
+        a
+    }
+    fn current_entertained(&mut self) -> u64 {
+        let b: u64 = self.entertained
+            - (BOREDOM_PER_BLOCK as u64) * ((exec::block_height() as u64) - self.entertained_block);
+        b
+    }
+    fn current_slept(&mut self) -> u64 {
+        let c: u64 = self.slept
+            - (ENERGY_PER_BLOCK as u64) * ((exec::block_height() as u64) - self.slept_block);
+        c
+    }
 }
 
 static mut TAMAGOTCHI: Option<Tamagotchi> = None;
@@ -65,7 +70,7 @@ extern fn handle() {
     // TODO: 0️⃣ Copy the `handle` function from the previous lesson and push changes to the master branch
     let action: TmgAction = msg::load().expect("unable to load action");
     let tmg = unsafe { TAMAGOTCHI.get_or_insert(Default::default()) };
-    if msg::source() = tmg.owner {
+    if msg::source() == tmg.owner {
         match action {
             TmgAction::Name => {
                 msg::reply(TmgEvent::Name(tmg.name.clone()), 0)
