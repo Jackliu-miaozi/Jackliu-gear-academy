@@ -1,8 +1,8 @@
 #![no_std]
 
 use codec::{Decode, Encode};
-use gmeta::{Metadata,In,InOut,Out};
-use gstd::prelude::*;
+use gmeta::{In, InOut, Metadata, Out};
+use gstd::{prelude::*, ActorId};
 
 #[derive(Default, Encode, Decode, TypeInfo)]
 #[codec(crate = gstd::codec)]
@@ -12,6 +12,13 @@ pub struct Tamagotchi {
     pub name: String,
     pub date_of_birth: u64,
     // TODO: 1️⃣ Add new fields
+    pub owner: ActorId,
+    pub fed: u64,
+    pub fed_block: u64,
+    pub entertained: u64,
+    pub entertained_block: u64,
+    pub slept: u64,
+    pub slept_block: u64,
 }
 
 #[derive(Encode, Decode, TypeInfo)]
@@ -22,6 +29,9 @@ pub enum TmgAction {
     Name,
     Age,
     // TODO: 2️⃣ Add new actions
+    Feed,
+    Entertain,
+    Sleep,
 }
 
 #[derive(Encode, Decode, TypeInfo)]
@@ -32,6 +42,9 @@ pub enum TmgEvent {
     Name(String),
     Age(u64),
     // TODO: 3️⃣ Add new events
+    Fed,
+    Entertained,
+    Slept,
 }
 
 pub struct ProgramMetadata;
@@ -45,3 +58,11 @@ impl Metadata for ProgramMetadata {
     type Others = ();
     type Signal = ();
 }
+
+pub const HUNGER_PER_BLOCK: u64 = 1;
+pub const BOREDOM_PER_BLOCK: u64 = 2;
+pub const ENERGY_PER_BLOCK: u64 = 2;
+
+pub const FILL_PER_FEED: u64 = 1000;
+pub const FILL_PER_ENTERTAINMENT: u64 = 1000;
+pub const FILL_PER_SLEEP: u64 = 1000;

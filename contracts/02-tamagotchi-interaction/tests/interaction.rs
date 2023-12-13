@@ -43,6 +43,21 @@ fn negative_smoke_test() {
 fn interaction_test() {
     let sys = System::new();
     sys.init_logger();
-    let _program = Program::current(&sys);
-    // TODO: 6️⃣ Test new functionality
+    let program = Program::current(&sys);
+    let result = program.send(2, String::from("Goodmoring"));
+    assert!(!result.main_failed());
+    let result = program.send(2, TmgAction::Feed);
+    let log = Log::builder().dest(2).payload(TmgEvent::Fed);
+    assert!(result.contains(&log));
+    let result = program.send(2, TmgAction::Entertain);
+    let log = Log::builder().dest(2).payload(TmgEvent::Entertained);
+    assert!(result.contains(&log));
+    let result = program.send(2, TmgAction::Sleep);
+    let log = Log::builder().dest(2).payload(TmgEvent::Slept);
+    assert!(result.contains(&log));
+
+
+    let result = program.send(1, TmgAction::Sleep);
+    assert!(result.main_failed());
+    //negetive test
 }
