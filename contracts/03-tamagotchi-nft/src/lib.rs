@@ -17,6 +17,7 @@ pub struct Tamagotchi {
     pub entertained_block: u64,
     pub slept: u64,
     pub slept_block: u64,
+    pub approved_account: Option<ActorId>,
 }
 impl Tamagotchi {
     fn current_fed(&mut self) -> u64 {
@@ -55,6 +56,7 @@ extern fn init() {
         entertained_block: entertainedblock,
         slept: 2000,
         slept_block: sleptblock,
+        approved_account: None,
     };
     unsafe {
         TAMAGOTCHI = Some(tmg);
@@ -128,6 +130,32 @@ extern fn handle() {
                     tmg.entertained = tmg.current_entertained();
                     msg::reply(TmgEvent::Slept, 1).expect("Error in a reply'tamagotchi::slept'");
                 }
+            }
+            TmgAction::Transfer(account) => {
+                tmg.owner = account;
+                msg::reply(TmgEvent::Transferred(account), 0)
+                    .expect("Error in a reply'tamagotchi::transferred'");
+            }
+            TmgAction::Approve(account) => {
+                tmg.approved_account = Some(account);
+                msg::reply(TmgEvent::Approved(account), 0)
+                    .expect("Error in a reply'tamagotchi::approved'");
+            }
+            TmgAction::RevokeApproval => {
+                tmg.approved_account = None;
+                msg::reply(TmgEvent::ApprovalRevoked, 0)
+                    .expect("Error in a reply'tamagotchi::approval_revoked'");
+            }
+        }
+    } else if msg::source() == tmg.approved_account.unwrap_or_default() {
+        match action {
+            TmgAction::Transfer(account) => {
+                tmg.owner = account;
+                msg::reply(TmgEvent::Transferred(account), 0)
+                    .expect("Error in a reply'tamagotchi::transfered'");
+            }
+            _ => {
+                panic!("You are not the approved people of this tamagotchi");
             }
         }
     } else {
