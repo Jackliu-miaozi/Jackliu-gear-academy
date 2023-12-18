@@ -21,19 +21,33 @@ pub struct Tamagotchi {
 
 impl Tamagotchi {
     fn current_fed(&mut self) -> u64 {
-        let a: u64 =
-            self.fed - (HUNGER_PER_BLOCK as u64) * ((exec::block_height() as u64) - self.fed_block);
-        a
+        self.fed - (HUNGER_PER_BLOCK as u64) * ((exec::block_height() as u64) - self.fed_block)
     }
     fn current_entertained(&mut self) -> u64 {
-        let b: u64 = self.entertained
-            - (BOREDOM_PER_BLOCK as u64) * ((exec::block_height() as u64) - self.entertained_block);
-        b
+        self.entertained
+            - (BOREDOM_PER_BLOCK as u64) * ((exec::block_height() as u64) - self.entertained_block)
     }
     fn current_slept(&mut self) -> u64 {
-        let c: u64 = self.slept
-            - (ENERGY_PER_BLOCK as u64) * ((exec::block_height() as u64) - self.slept_block);
-        c
+        self.slept - (ENERGY_PER_BLOCK as u64) * ((exec::block_height() as u64) - self.slept_block)
+    }
+    fn is_alive(&mut self) -> bool {
+        if self.current_fed() > 0 && self.current_entertained() > 0 && self.current_slept() > 0 {
+            true
+        } else {
+            panic!("Your tamagotchi is dead");
+        }
+    }
+    fn feedaction(&mut self) {
+        self.entertained = self.current_entertained();
+        self.slept = self.current_slept();
+    }
+    fn entertainaction(&mut self) {
+        self.fed = self.current_fed();
+        self.slept = self.current_slept();
+    }
+    fn selptaction(&mut self) {
+        self.fed = self.current_fed();
+        self.entertained = self.current_entertained();
     }
 }
 
@@ -45,20 +59,17 @@ static mut TAMAGOTCHI: Option<Tamagotchi> = None;
 extern fn init() {
     // TODO: 0️⃣ Copy the `init` function from the previous lesson and push changes to the master branch
     let initname = msg::load().expect("unable to load name");
-    let birthdate = exec::block_height() as u64;
-    let fedblock = exec::block_height() as u64;
-    let entertainedblock = exec::block_height() as u64;
-    let sleptblock = exec::block_height() as u64;
+    let current_block_height = exec::block_height() as u64;
     let tmg = Tamagotchi {
         name: initname,
-        date_of_birth: birthdate,
+        date_of_birth: current_block_height,
         owner: msg::source(),
         fed: 1000,
-        fed_block: fedblock,
+        fed_block: current_block_height,
         entertained: 5000,
-        entertained_block: entertainedblock,
+        entertained_block: current_block_height,
         slept: 2000,
-        slept_block: sleptblock,
+        slept_block: current_block_height,
     };
     unsafe {
         TAMAGOTCHI = Some(tmg);
@@ -81,55 +92,49 @@ extern fn handle() {
                 msg::reply(TmgEvent::Age(age), 0).expect("Error in a reply'tamagotchi::age'");
             }
             TmgAction::Feed => {
-                if tmg.current_fed() <= 9000 {
+                if (tmg.current_fed() <= 9000) && tmg.is_alive() {
                     let fed = tmg.fed + FILL_PER_FEED;
                     msg::reply(TmgEvent::Fed, 0).expect("Error in a reply'tamagotchi::fed'");
                     tmg.fed = fed;
                     tmg.fed_block = exec::block_height() as u64;
-                    tmg.entertained = tmg.current_entertained();
-                    tmg.slept = tmg.current_slept();
-                } else {
+                    tmg.feedaction();
+                } else if tmg.current_entertained() >= 9000 {
                     let fedblock = exec::block_height() as u64;
-                    tmg.fed = 10000;
+                    tmg.fed = MAX_FED;
                     tmg.fed_block = fedblock;
-                    tmg.entertained = tmg.current_entertained();
-                    tmg.slept = tmg.current_slept();
+                    tmg.feedaction();
                     msg::reply(TmgEvent::Fed, 1).expect("Error in a reply'tamagotchi::fed'");
                 }
             }
             TmgAction::Entertain => {
-                if tmg.current_entertained() <= 9000 {
+                if (tmg.current_entertained() <= 9000) && tmg.is_alive() {
                     let entertained = tmg.entertained + FILL_PER_ENTERTAINMENT;
                     msg::reply(TmgEvent::Entertained, 0)
                         .expect("Error in a reply'tamagotchi::entertained'");
                     tmg.entertained = entertained;
                     tmg.entertained_block = exec::block_height() as u64;
-                    tmg.fed = tmg.current_fed();
-                    tmg.slept = tmg.current_slept();
-                } else {
+                    tmg.entertainaction();
+                } else if tmg.current_entertained() >= 9000 {
                     let entertainedblock = exec::block_height() as u64;
-                    tmg.entertained = 10000;
+                    tmg.entertained = MAX_ENTERTAINED;
                     tmg.entertained_block = entertainedblock;
-                    tmg.fed = tmg.current_fed();
-                    tmg.slept = tmg.current_slept();
+                    tmg.entertainaction();
                     msg::reply(TmgEvent::Entertained, 1)
                         .expect("Error in a reply'tamagotchi::entertained'");
                 }
             }
             TmgAction::Sleep => {
-                if tmg.current_slept() <= 9000 {
+                if (tmg.current_slept() <= 9000) && tmg.is_alive() {
                     let slept = tmg.slept + FILL_PER_SLEEP;
                     msg::reply(TmgEvent::Slept, 0).expect("Error in a reply'tamagotchi::slept'");
                     tmg.slept = slept;
                     tmg.slept_block = exec::block_height() as u64;
-                    tmg.fed = tmg.current_fed();
-                    tmg.entertained = tmg.current_entertained();
-                } else {
+                    tmg.selptaction()
+                } else if tmg.current_entertained() >= 9000 {
                     let sleptblock = exec::block_height() as u64;
-                    tmg.slept = 10000;
+                    tmg.slept = MAX_SLEPT;
                     tmg.slept_block = sleptblock;
-                    tmg.fed = tmg.current_fed();
-                    tmg.entertained = tmg.current_entertained();
+                    tmg.selptaction();
                     msg::reply(TmgEvent::Slept, 1).expect("Error in a reply'tamagotchi::slept'");
                 }
             }

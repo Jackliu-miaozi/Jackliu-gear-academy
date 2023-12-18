@@ -66,3 +66,7 @@ pub const ENERGY_PER_BLOCK: u64 = 2;
 pub const FILL_PER_FEED: u64 = 1000;
 pub const FILL_PER_ENTERTAINMENT: u64 = 1000;
 pub const FILL_PER_SLEEP: u64 = 1000;
+
+pub const MAX_FED: u64 = 10000;
+pub const MAX_ENTERTAINED: u64 = 10000;
+pub const MAX_SLEPT: u64 = 10000;
