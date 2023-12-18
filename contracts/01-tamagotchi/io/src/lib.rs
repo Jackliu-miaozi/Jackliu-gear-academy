@@ -1,7 +1,7 @@
 #![no_std]
 
 use codec::{Decode, Encode};
-use gmeta::{Metadata,In,InOut,Out};
+use gmeta::{In, InOut, Metadata, Out};
 use gstd::prelude::*;
 
 #[derive(Default, Encode, Decode, TypeInfo)]
