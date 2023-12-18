@@ -13,8 +13,8 @@ fn smoke_test() {
         .dest(2)
         .payload(TmgEvent::Name(String::from("Goodmorning")));
     assert!(result.contains(&log));
-    let _result = program.send(2, TmgAction::Age);
-    // let age = sys.spend_blocks(1);
-    // let log = Log::builder().dest(2).payload(TmgEvent::Age(age[0]));
-    // assert!(result.contains(&log));
+    sys.spend_blocks(1);
+    let result = program.send(2, TmgAction::Age);
+    let log = Log::builder().dest(2).payload(TmgEvent::Age(1));
+    assert!(result.contains(&log));
 }

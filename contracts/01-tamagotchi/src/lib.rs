@@ -9,7 +9,7 @@ static mut TAMAGOTCHI: Option<Tamagotchi> = None;
 extern fn init() {
     // TODO: 5️⃣ Initialize the Tamagotchi program
     let initname = msg::load().expect("unable to load name");
-    let birthdate = exec::block_timestamp();
+    let birthdate = exec::block_height() as u64;
     let tmg = Tamagotchi {
         name: initname,
         date_of_birth: birthdate,
@@ -30,7 +30,7 @@ extern fn handle() {
                 .expect("Error in a reply'tamagotchi::name'");
         }
         TmgAction::Age => {
-            let age = exec::block_timestamp() - tmg.date_of_birth;
+            let age = exec::block_height() as u64 - tmg.date_of_birth;
             msg::reply(TmgEvent::Age(age), 0).expect("Error in a reply'tamagotchi::age'");
         }
     }
