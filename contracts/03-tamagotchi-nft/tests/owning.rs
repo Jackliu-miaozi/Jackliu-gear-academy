@@ -28,9 +28,6 @@ fn owning_test() {
     // let result = program.send(3, TmgAction::RevokeApproval);
     // let log = Log::builder().dest(3).payload(TmgEvent::ApprovalRevoked);
     // assert!(result.contains(&log));
-
     //why the test is panic?
-    //TODO: I don't know how to test the code.
-
     // TODO: 6️⃣ Test new functionality
 }
