@@ -24,10 +24,6 @@ pub struct Tamagotchi {
     pub transaction_id: TransactionId,
     pub approve_transaction: Option<(TransactionId, ActorId, u128)>,
 }
-pub type TransactionId = u64;
-pub type AttributeId = u32;
-pub type Price = u128;
-pub type TamagotchiId = ActorId;
 
 impl Tamagotchi {
     fn current_fed(&mut self) -> u64 {
