@@ -152,6 +152,7 @@ extern fn handle() {
                 msg::reply(TmgEvent::Transferred(account), 0)
                     .expect("Error in a reply'tamagotchi::transfered'");
             }
+            panic!("You are not the owner of this tamagotchi");
         }
         TmgAction::Approve(account) => {
             tmg.approved_account = Some(account);
