@@ -1,8 +1,7 @@
 #![no_std]
-
 use codec::{Decode, Encode};
 use gmeta::{In, InOut, Metadata, Out};
-use gstd::{prelude::*, ActorId};
+use gstd::{prelude::*, ActorId, ReservationId};
 
 #[derive(Default, Encode, Decode, TypeInfo)]
 #[codec(crate = gstd::codec)]
@@ -23,6 +22,7 @@ pub struct Tamagotchi {
     pub transaction_id: TransactionId,
     pub approve_transaction: Option<(TransactionId, ActorId, u128)>,
     // TODO: 1️⃣ Add new fields
+    pub reservations: Vec<ReservationId>,
 }
 pub type TransactionId = u64;
 pub type AttributeId = u32;
@@ -52,6 +52,11 @@ pub enum TmgAction {
         attribute_id: AttributeId,
     },
     // TODO: 2️⃣ Add new actions
+    CheckState,
+    ReserveGas {
+        reservation_amount: u64,
+        duration: u32,
+    },
 }
 
 #[derive(Encode, Decode, TypeInfo)]
@@ -74,6 +79,11 @@ pub enum TmgEvent {
     CompletePrevPurchase(AttributeId),
     ErrorDuringPurchase,
     // TODO: 3️⃣ Add new events
+    FeedMe,
+    PlayWithMe,
+    WantToSleep,
+    MakeReservation,
+    GasReserved,
 }
 
 pub struct ProgramMetadata;
@@ -99,3 +109,6 @@ pub const FILL_PER_SLEEP: u64 = 1000;
 pub const MAX_FED: u64 = 10000;
 pub const MAX_ENTERTAINED: u64 = 10000;
 pub const MAX_SLEPT: u64 = 10000;
+
+pub const RESERVATION_AMOUNT: u64 = 50_000_000_000;
+pub const RESERVATION_DURATION: u32 = 86400;

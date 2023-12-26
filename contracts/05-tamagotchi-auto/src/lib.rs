@@ -1,7 +1,7 @@
 #![no_std]
 
 #[allow(unused_imports)]
-use gstd::{exec, msg, prelude::*, ActorId};
+use gstd::{exec, msg, prelude::*, ActorId, ReservationId};
 use sharded_fungible_token_io::{FTokenAction, FTokenEvent, LogicAction};
 use store_io::*;
 use tamagotchi_auto_io::*;
@@ -9,21 +9,27 @@ use tamagotchi_auto_io::*;
 #[derive(Default, Encode, Decode, TypeInfo)]
 #[codec(crate = gstd::codec)]
 #[scale_info(crate = gstd::scale_info)]
-pub struct Tamagotchi {
-    pub name: String,
-    pub date_of_birth: u64,
-    pub owner: ActorId,
-    pub fed: u64,
-    pub fed_block: u64,
-    pub entertained: u64,
-    pub entertained_block: u64,
-    pub slept: u64,
-    pub slept_block: u64,
-    pub approved_account: Option<ActorId>,
-    pub ft_contract_id: ActorId,
-    pub transaction_id: TransactionId,
-    pub approve_transaction: Option<(TransactionId, ActorId, u128)>,
+struct Tamagotchi {
+    name: String,
+    date_of_birth: u64,
+    owner: ActorId,
+    fed: u64,
+    fed_block: u64,
+    entertained: u64,
+    entertained_block: u64,
+    slept: u64,
+    slept_block: u64,
+    approved_account: Option<ActorId>,
+    ft_contract_id: ActorId,
+    transaction_id: TransactionId,
+    approve_transaction: Option<(TransactionId, ActorId, u128)>,
+    reservations: Vec<ReservationId>,
 }
+type TransactionId = u64;
+type AttributeId = u32;
+
+//why the compiler told me that the AttributeId is a ambiguous name?
+//when I type the pub type AttributeId = u32.
 
 impl Tamagotchi {
     fn current_fed(&mut self) -> u64 {
@@ -88,12 +94,12 @@ impl Tamagotchi {
                 .expect("Error in a reply'tamagotchi::buy_attribute'");
         }
     }
+    async fn check_state(&mut self) {}
 }
 static mut TAMAGOTCHI: Option<Tamagotchi> = None;
 
 #[no_mangle]
 extern fn init() {
-    // TODO: 0️⃣ Copy the `init` function from the previous lesson and push changes to the master branch
     let initname = msg::load().expect("unable to load name");
     let birthdate = exec::block_height() as u64;
     let fedblock = exec::block_height() as u64;
@@ -113,6 +119,7 @@ extern fn init() {
         ft_contract_id: ActorId::default(),
         transaction_id: 0,
         approve_transaction: None,
+        reservations: Vec::new(),
     };
     unsafe {
         TAMAGOTCHI = Some(tmg);
@@ -121,7 +128,6 @@ extern fn init() {
 
 #[gstd::async_main]
 async fn main() {
-    // TODO: 0️⃣ Copy the `handle` function from the previous lesson and push changes to the master branch
     let action: TmgAction = msg::load().expect("unable to load action");
     let tmg = unsafe { TAMAGOTCHI.get_or_insert(Default::default()) };
     match action {
@@ -223,12 +229,41 @@ async fn main() {
         } => {
             tmg.buy_attribute(store_id, attribute_id).await;
         }
+        TmgAction::CheckState => {
+            
+        }
+        TmgAction::ReserveGas {
+            reservation_amount,
+            duration,
+        } => {
+            let reservation_id = ReservationId::reserve(reservation_amount, duration)
+                .expect("reservation across executions");
+            tmg.reservations.push(reservation_id);
+        }
     }
 }
 
 #[no_mangle]
 extern fn state() {
-    // TODO: 0️⃣ Copy the `handle` function from the previous lesson and push changes to the master branch
     let tmg = unsafe { TAMAGOTCHI.take().expect("Unexpected error in taking state") };
     msg::reply(tmg, 0).expect("Failed to share state");
+}
+
+#[no_mangle]
+extern fn my_handle_signal() {
+    let auction = unsafe { AUCTION.get_or_insert(Default::default()) };
+    if let Some(tx) = &auction.transaction {
+        let reservation_id = if !auction.reservations.is_empty() {
+            auction.reservations.remove(0)
+        } else {
+            return;
+        };
+        msg::send_from_reservation(
+            reservation_id,
+            exec::program_id(),
+            AuctionAction::CompleteTx(tx.clone()),
+            0,
+        )
+        .expect("Failed to send message");
+    }
 }
