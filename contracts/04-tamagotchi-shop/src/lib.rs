@@ -2,6 +2,8 @@
 
 #[allow(unused_imports)]
 use gstd::{exec, msg, prelude::*, ActorId};
+use sharded_fungible_token_io::{FTokenAction, FTokenEvent, LogicAction};
+use store_io::*;
 use tamagotchi_shop_io::*;
 
 #[derive(Default, Encode, Decode, TypeInfo)]
@@ -18,7 +20,11 @@ pub struct Tamagotchi {
     pub slept: u64,
     pub slept_block: u64,
     pub approved_account: Option<ActorId>,
+    pub ft_contract_id: ActorId,
+    pub transaction_id: TransactionId,
+    pub approve_transaction: Option<(TransactionId, ActorId, u128)>,
 }
+
 impl Tamagotchi {
     fn current_fed(&mut self) -> u64 {
         let a: u64 =
@@ -34,6 +40,58 @@ impl Tamagotchi {
         let c: u64 = self.slept
             - (ENERGY_PER_BLOCK as u64) * ((exec::block_height() as u64) - self.slept_block);
         c
+    }
+    async fn approve_tokens(&mut self, account: &ActorId, amount: u128) {
+        if self.ft_contract_id == ActorId::default() {
+            msg::reply(TmgEvent::ApprovalError, 0)
+                .expect("Error in a reply'tamagotchi::approve_tokens'");
+            panic!("You need to set the FToken contract first");
+        } else {
+            let _unused = msg::send_for_reply_as::<_, FTokenEvent>(
+                self.ft_contract_id,
+                FTokenAction::Message {
+                    transaction_id: self.transaction_id,
+                    payload: LogicAction::Approve {
+                        approved_account: *account,
+                        amount,
+                    },
+                },
+                0,
+                0,
+            )
+            .expect("Error in sending a message `FTokenAction::Message`")
+            .await;
+            self.transaction_id += 1;
+            self.approve_transaction = Some((self.transaction_id, *account, amount));
+            msg::reply(
+                TmgEvent::TokensApproved {
+                    account: *account,
+                    amount,
+                },
+                0,
+            )
+            .expect("Error in a reply'tamagotchi::approve_tokens'");
+        };
+    }
+    async fn buy_attribute(&mut self, store_id: ActorId, attribute_id: AttributeId) {
+        if self.approve_transaction.is_none() {
+            msg::reply(TmgEvent::ErrorDuringPurchase, 0)
+                .expect("Error in a reply'tamagotchi::buy_attribute'");
+        } else if self.approve_transaction.unwrap().0 != self.transaction_id {
+            msg::reply(TmgEvent::CompletePrevPurchase(attribute_id), 0)
+                .expect("Error in a reply'tamagotchi::buy_attribute'");
+        } else {
+            let _unused = msg::send_for_reply_as::<_, StoreEvent>(
+                store_id,
+                StoreAction::BuyAttribute { attribute_id },
+                0,
+                0,
+            )
+            .expect("Error in sending a message `StoreAction::BuyAttribute`")
+            .await;
+            msg::reply(TmgEvent::AttributeBought(attribute_id), 0)
+                .expect("Error in a reply'tamagotchi::buy_attribute'");
+        }
     }
 }
 static mut TAMAGOTCHI: Option<Tamagotchi> = None;
@@ -59,14 +117,17 @@ extern fn init() {
         slept: 2000,
         slept_block: sleptblock,
         approved_account: None,
+        ft_contract_id: ActorId::default(),
+        transaction_id: 0,
+        approve_transaction: None,
     };
     unsafe {
         TAMAGOTCHI = Some(tmg);
     };
 }
 
-#[no_mangle]
-extern fn handle() {
+#[gstd::async_main]
+async fn main() {
     // TODO: 0️⃣ Copy the `handle` function from the previous lesson and push changes to the master branch
     let action: TmgAction = msg::load().expect("unable to load action");
     let tmg = unsafe { TAMAGOTCHI.get_or_insert(Default::default()) };
@@ -148,6 +209,20 @@ extern fn handle() {
                 msg::reply(TmgEvent::ApprovalRevoked, 0)
                     .expect("Error in a reply'tamagotchi::approval_revoked'");
             }
+            TmgAction::SetFTokenContract(contract_id) => {
+                tmg.ft_contract_id = contract_id;
+                msg::reply(TmgEvent::FTokenContractSet, 0)
+                    .expect("Error in a reply'tamagotchi::ftoken_contract_set'");
+            }
+            TmgAction::ApproveTokens { account, amount } => {
+                tmg.approve_tokens(&account, amount).await;
+            }
+            TmgAction::BuyAttribute {
+                store_id,
+                attribute_id,
+            } => {
+                tmg.buy_attribute(store_id, attribute_id).await;
+            }
         }
     } else if msg::source() == tmg.approved_account.unwrap_or_default() {
         match action {
@@ -163,7 +238,6 @@ extern fn handle() {
     } else {
         panic!("You are not the owner of this tamagotchi");
     }
-    // TODO; 6️⃣ Add handling new actions
 }
 
 #[no_mangle]
