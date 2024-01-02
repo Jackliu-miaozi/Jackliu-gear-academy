@@ -5645,16 +5645,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tamagotchi"
-version = "0.3.3"
-dependencies = [
- "gear-wasm-builder",
- "gstd",
- "gtest",
- "tamagotchi-io",
-]
-
-[[package]]
 name = "tamagotchi-army"
 version = "0.3.3"
 dependencies = [
@@ -5703,14 +5693,6 @@ dependencies = [
 
 [[package]]
 name = "tamagotchi-interaction-io"
-version = "0.3.3"
-dependencies = [
- "gmeta",
- "gstd",
-]
-
-[[package]]
-name = "tamagotchi-io"
 version = "0.3.3"
 dependencies = [
  "gmeta",
